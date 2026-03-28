@@ -5,15 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flora Focus</title>
 <style>
-body{font-family:'Segoe UI',sans-serif;text-align:center;background:linear-gradient(#e8f5e9,#c8e6c9);margin:0}
+body{font-family:'Segoe UI',sans-serif;text-align:center;margin:0;transition:0.5s}
+.bg-green{background:linear-gradient(#e8f5e9,#c8e6c9);}
+.bg-blue{background:linear-gradient(#e3f2fd,#bbdefb);}
+.bg-pink{background:linear-gradient(#fce4ec,#f8bbd0);}
+.bg-dark{background:linear-gradient(#263238,#37474f);color:white;}
+
 .container{max-width:520px;margin:auto;padding:16px;position:relative}
 h1{margin:8px 0}
 input,select,button{padding:10px;border-radius:12px;border:none;margin:5px}
 button{background:#2e7d32;color:#fff;cursor:pointer}
 .timer{font-size:2.4em;margin:10px}
 .status{font-size:1.2em;font-weight:bold;margin:8px}
-.work{color:#1b5e20}
-.rest{color:#0d47a1}
 .scene{position:relative;height:200px}
 .plant{position:absolute;bottom:0;left:50%;transform:translateX(-50%) scale(.3);transition:2s;font-size:90px}
 .grow1{transform:translateX(-50%) scale(.5)}
@@ -26,7 +29,9 @@ footer{font-size:0.75em;margin-top:20px;opacity:0.7}
 .lang button{background:none;border:none;font-size:20px;cursor:pointer;}
 </style>
 </head>
-<body>
+
+<body class="bg-green">
+
 <div class="container">
 
 <div class="lang">
@@ -36,14 +41,20 @@ footer{font-size:0.75em;margin-top:20px;opacity:0.7}
 
 <h1>🌿 Flora Focus</h1>
 
-<label id="lblWork">⏱ Tiempo de trabajo (min)</label>
-<input id="workTime" type="number" value="25" min="1">
+<label>⏱ Tiempo de trabajo (min)</label>
+<input id="workTime" type="number" value="25" min="1" max="60" oninput="validateInput(this)">
 
-<label id="lblBreak">💧 Tiempo de descanso (min)</label>
-<input id="breakTime" type="number" value="5" min="1">
+<label>💧 Tiempo de descanso (min)</label>
+<input id="breakTime" type="number" value="5" min="1" max="60" oninput="validateInput(this)">
 
-<label id="lblCycles">🔁 Ciclos</label>
-<input id="cycles" type="number" value="4" min="1"><br>
+<label>🔁 Ciclos</label>
+<input id="cycles" type="number" value="4" min="1" max="60" oninput="validateInput(this)"><br>
+
+<label>🎨 Fondo</label>
+<button onclick="setBg('green')">🌿</button>
+<button onclick="setBg('blue')">💧</button>
+<button onclick="setBg('pink')">🌸</button>
+<button onclick="setBg('dark')">🌙</button>
 
 <select id="volume">
 <option value="0.1">Bajo</option>
@@ -53,11 +64,11 @@ footer{font-size:0.75em;margin-top:20px;opacity:0.7}
 
 <label>
   <input type="checkbox" id="soundToggle" checked>
-  <span id="soundText">Señal auditiva</span>
+  Señal auditiva
 </label><br>
 
-<button id="btnStart" onclick="start()">Comenzar</button>
-<button id="btnStop" onclick="stop()">Detener</button>
+<button onclick="start()">Comenzar</button>
+<button onclick="stop()">Detener</button>
 
 <div class="timer" id="timer">00:00</div>
 <div id="status" class="status"></div>
@@ -72,8 +83,18 @@ footer{font-size:0.75em;margin-top:20px;opacity:0.7}
 
 <script>
 const $ = id => document.getElementById(id);
-let audioCtx=null;
 
+function validateInput(el){
+  el.value = el.value.replace(/[^0-9]/g,'');
+  if(el.value === "" || el.value == "0") el.value = 1;
+  if(el.value > 60) el.value = 60;
+}
+
+function setBg(theme){
+  document.body.className = "bg-" + theme;
+}
+
+let audioCtx=null;
 function beep(freq=600,duration=0.1){
   if(!$('soundToggle').checked) return;
   if(!audioCtx){
@@ -91,32 +112,13 @@ function beep(freq=600,duration=0.1){
 
 function tick(){beep(isWork?600:400,0.05)}
 
-const translations={
-  es:{work:"⏱ Tiempo de trabajo",rest:"💧 Tiempo de descanso",cycles:"🔁 Ciclos",start:"Comenzar",stop:"Detener",sound:"Señal auditiva",working:"🌿 TRABAJO",resting:"💧 DESCANSO",done:"🌸 Completado",stopped:"⏹ Detenido"},
-  en:{work:"⏱ Work time",rest:"💧 Break time",cycles:"🔁 Cycles",start:"Start",stop:"Stop",sound:"Sound",working:"🌿 WORK",resting:"💧 BREAK",done:"🌸 Completed",stopped:"⏹ Stopped"}
-};
-
-let currentLang="es";
-
-function setLanguage(lang){
-  currentLang=lang;
-  let t=translations[lang];
-  $('lblWork').innerText=t.work;
-  $('lblBreak').innerText=t.rest;
-  $('lblCycles').innerText=t.cycles;
-  $('btnStart').innerText=t.start;
-  $('btnStop').innerText=t.stop;
-  $('soundText').innerText=t.sound;
-  updateStatus();
-}
-
 let work,rest,total,cycle=0,isWork=true,interval,growth=0,endTime=0;
 
 function start(){
   work=$('workTime').value*60;
   rest=$('breakTime').value*60;
   total=$('cycles').value;
-  if(!work||!rest||!total)return alert("Datos inválidos");
+  if(work<=0||rest<=0||total<=0)return alert("Datos inválidos");
   stop();
   cycle=0;isWork=true;growth=0;
   run(work);
@@ -129,6 +131,7 @@ function run(d){
     let r=Math.max(0,Math.floor((endTime-Date.now())/1000));
     $('timer').innerText=String(Math.floor(r/60)).padStart(2,'0')+":"+String(r%60).padStart(2,'0');
     tick();
+
     if(isWork){
       let step=Math.floor(d/4)||1;
       if(r%step===0&&growth<4){
@@ -137,13 +140,26 @@ function run(d){
         if(growth===4)$('plant').innerText='🌸';
       }
     }
+
     if(r<=0){
       clearInterval(interval);
       beep(800,0.1);
-      if(isWork){isWork=false;run(rest);}
-      else{
+
+      if(isWork){
+        isWork=false;
+        run(rest);
+      }else{
         cycle++;
-        if(cycle>=total){$('status').innerText=translations[currentLang].done;return;}
+
+        if(cycle === 1){
+          $('plant').innerText='🌻';
+        }
+
+        if(cycle>=total){
+          $('status').innerText="🌸 Completado";
+          return;
+        }
+
         resetPlant();
         isWork=true;
         run(work);
@@ -154,11 +170,11 @@ function run(d){
 
 function stop(){
   clearInterval(interval);
-  $('status').innerText=translations[currentLang].stopped;
+  $('status').innerText="⏹ Detenido";
 }
 
 function updateStatus(){
-  $('status').innerText=isWork?translations[currentLang].working:translations[currentLang].resting;
+  $('status').innerText=isWork?"🌿 TRABAJO":"💧 DESCANSO";
 }
 
 function resetPlant(){
@@ -167,5 +183,6 @@ function resetPlant(){
   $('plant').innerText='🌱';
 }
 </script>
+
 </body>
 </html>
